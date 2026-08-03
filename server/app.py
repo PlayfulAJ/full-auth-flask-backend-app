@@ -95,5 +95,123 @@ def me():
         200
     )
 
+
+@app.route("/tasks", methods=["GET"])
+@jwt_required()
+def get_tasks():
+
+    user_id = int(get_jwt_identity())
+
+    tasks = Task.query.filter_by(
+        user_id=user_id
+    ).all()
+
+    task_list = []
+
+    for task in tasks:
+        task_list.append({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed
+        })
+
+    return make_response(task_list, 200)
+
+@app.route("/tasks", methods=["POST"])
+@jwt_required()
+def create_task():
+
+    data = request.get_json()
+
+    user_id = int(get_jwt_identity())
+
+    task = Task(
+        title=data["title"],
+        description=data["description"],
+        completed=False,
+        user_id=user_id
+    )
+
+    db.session.add(task)
+    db.session.commit()
+
+    return make_response(
+        {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed,
+            "user_id": task.user_id
+        },
+        201
+    )
+
+@app.route("/tasks/<int:id>", methods=["PATCH"])
+@jwt_required()
+def update_task(id):
+
+    user_id = int(get_jwt_identity())
+
+    task = Task.query.filter_by(
+        id=id,
+        user_id=user_id
+    ).first()
+
+    if task is None:
+        return make_response(
+            {"error": "Task not found"},
+            404
+        )
+
+    data = request.get_json()
+
+    if "title" in data:
+        task.title = data["title"]
+
+    if "description" in data:
+        task.description = data["description"]
+
+    if "completed" in data:
+        task.completed = data["completed"]
+
+    db.session.commit()
+
+    return make_response(
+        {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed
+        },
+        200
+    )
+
+@app.route("/tasks/<int:id>", methods=["DELETE"])
+@jwt_required()
+def delete_task(id):
+
+    user_id = int(get_jwt_identity())
+
+    task = Task.query.filter_by(
+        id=id,
+        user_id=user_id
+    ).first()
+
+    if task is None:
+        return make_response(
+            {"error": "Task not found"},
+            404
+        )
+
+    db.session.delete(task)
+    db.session.commit()
+
+    return make_response(
+        {"message": "Task delleted successfully"},
+        200
+    )
+
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
